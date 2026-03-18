@@ -43,6 +43,10 @@ export default function ResultView({ result, isLoading }: ResultViewProps) {
     );
   }
 
+  if (!result) {
+    return null;
+  }
+
   return (
     <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-xl font-semibold text-slate-900">Analysis Result</h2>
