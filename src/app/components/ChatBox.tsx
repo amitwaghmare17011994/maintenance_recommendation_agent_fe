@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -29,8 +31,7 @@ export default function ChatBox({ open, messages, loading, onSendMessage, onClos
     setQuery("");
     await onSendMessage(trimmed);
   };
-
-  return (
+   return (
     <aside
       className={`fixed right-0 top-0 z-30 flex h-screen w-full max-w-md transform flex-col border-l border-slate-200 bg-white shadow-xl transition-transform duration-200 ${
         open ? "translate-x-0" : "translate-x-full"
@@ -69,7 +70,13 @@ export default function ChatBox({ open, messages, loading, onSendMessage, onClos
                 : "bg-slate-100 text-slate-800"
             }`}
           >
-            {message.content}
+            {message.role === "assistant" ? (
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+              </div>
+            ) : (
+              message.content
+            )}
           </div>
         ))}
       </div>
