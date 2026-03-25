@@ -16,11 +16,13 @@ type AnalyzeResult = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  streaming?: boolean;
 };
 
 const API_BASE = "/backend";
 
 export default function HomePage() {
+
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -32,49 +34,117 @@ export default function HomePage() {
   };
 
   const handleSendMessage = async (query: string) => {
-    setMessages((previous) => [...previous, { role: "user", content: query }]);
+
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: query }
+    ]);
+
     setChatLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/agent?query=${encodeURIComponent(query)}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ query })
+
+      const response = await fetch(
+        `${API_BASE}/agent-stream?query=${encodeURIComponent(query)}`,
+        { method: "POST" }
+      );
+
+      if (!response.body) throw new Error("No stream");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let streamIndex = -1;
+
+      //@ts-ignore
+      // add empty assistant message
+      setMessages((prev) => {
+        const arr = [
+          ...prev,
+          { role: "assistant", content: "", streaming: true }
+        ];
+        streamIndex = arr.length - 1;
+        return arr;
       });
 
-      if (!response.ok) {
-        throw new Error(`Agent request failed with status ${response.status}.`);
+      let finalText = "";
+
+      while (true) {
+
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        const chunk = decoder.decode(value).trim();
+
+        setMessages((prev) => {
+
+          const copy = [...prev];
+
+          if (streamIndex < 0) return prev;
+
+          // STATUS MESSAGE
+          if (
+            chunk.startsWith("🤖") ||
+            chunk.startsWith("📄") ||
+            chunk.startsWith("🔍") ||
+            chunk.startsWith("⚠️") ||
+            chunk.startsWith("🔧") ||
+            chunk.startsWith("⚙️") ||
+            chunk.startsWith("✔")
+          ) {
+
+            copy[streamIndex] = {
+              role: "assistant",
+              content: chunk,
+              streaming: true
+            };
+
+          }
+          else {
+
+            // FINAL RESULT
+            finalText += chunk + "\n";
+
+            copy[streamIndex] = {
+              role: "assistant",
+              content: finalText,
+              streaming: false
+            };
+
+          }
+
+          return copy;
+
+        });
+
+        await new Promise((r) => setTimeout(r, 400));
       }
 
-      const data: { answer?: string } = await response.json();
-      setMessages((previous) => [
-        ...previous,
-        { role: "assistant", content: data.answer ?? "No response from agent." }
+    } catch (err) {
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Streaming error" }
       ]);
-    } catch (requestError) {
-      setMessages((previous) => [
-        ...previous,
-        {
-          role: "assistant",
-          content:
-            requestError instanceof Error ? requestError.message : "Failed to contact backend."
-        }
-      ]);
+
     } finally {
+
       setChatLoading(false);
+
     }
+
   };
 
   return (
     <main className="min-h-screen bg-slate-50 p-6 text-slate-900 sm:p-8">
+
       <div className="mx-auto max-w-4xl space-y-6">
+
         <section className="space-y-2">
-          <h1 className="text-3xl font-bold">Maintenance Agent UI</h1>
-          <p className="text-sm text-slate-600">
-            Upload a report, review analysis output, then chat with the agent.
-          </p>
+          <h1 className="text-3xl font-bold">
+            Maintenance Agent UI
+          </h1>
         </section>
 
         <FileUpload
@@ -87,11 +157,17 @@ export default function HomePage() {
             }
           }}
         />
+
         <ResultView result={result} isLoading={isAnalyzing} />
+
       </div>
 
-      <FloatingChat visible={Boolean(result) && !chatOpen} onOpen={() => setChatOpen(true)} />
-      {result ? (
+      <FloatingChat
+        visible={Boolean(result) && !chatOpen}
+        onOpen={() => setChatOpen(true)}
+      />
+
+      {result && (
         <ChatBox
           open={chatOpen}
           messages={messages}
@@ -99,7 +175,8 @@ export default function HomePage() {
           onSendMessage={handleSendMessage}
           onClose={() => setChatOpen(false)}
         />
-      ) : null}
+      )}
+
     </main>
   );
 }

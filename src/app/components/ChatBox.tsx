@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  streaming?: boolean;
 };
 
 type ChatBoxProps = {
@@ -17,88 +18,86 @@ type ChatBoxProps = {
   onClose: () => void;
 };
 
-export default function ChatBox({ open, messages, loading, onSendMessage, onClose }: ChatBoxProps) {
+export default function ChatBox({
+  open,
+  messages,
+  loading,
+  onSendMessage,
+  onClose
+}: ChatBoxProps) {
+
   const [query, setQuery] = useState("");
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
 
-    const trimmed = query.trim();
-    if (!trimmed || loading) {
-      return;
-    }
+    if (!query.trim()) return;
 
+    const q = query;
     setQuery("");
-    await onSendMessage(trimmed);
+
+    await onSendMessage(q);
   };
-   return (
+console.log({messages})
+  return (
+
     <aside
-      className={`fixed right-0 top-0 z-30 flex h-screen w-full max-w-md transform flex-col border-l border-slate-200 bg-white shadow-xl transition-transform duration-200 ${
+      className={`fixed right-0 top-0 z-30 flex h-screen w-full max-w-md transform flex-col bg-white shadow-xl transition-transform duration-200 ${
         open ? "translate-x-0" : "translate-x-full"
       }`}
     >
-      <div className="border-b border-slate-200 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Maintenance Agent Chat</h2>
-            <p className="text-sm text-slate-500">Ask questions about your uploaded report.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close chat panel"
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            X
-          </button>
-        </div>
+
+      <div className="p-4 border-b">
+        <b>Maintenance Agent Chat</b>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 ? (
-          <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">
-            Your chat history will appear here.
-          </p>
-        ) : null}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
-        {messages.map((message, index) => (
-          <div
-            key={`${message.role}-${index}`}
-            className={`max-w-[90%] rounded-lg px-3 py-2 text-sm ${
-              message.role === "user"
-                ? "ml-auto bg-slate-900 text-white"
-                : "bg-slate-100 text-slate-800"
-            }`}
-          >
-            {message.role === "assistant" ? (
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-              </div>
-            ) : (
-              message.content
-            )}
-          </div>
-        ))}
+        {messages.map((m, i) => {
+
+          const isStreaming = m.streaming;
+
+          return (
+            <div
+              key={i}
+              className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                m.role === "user"
+                  ? "ml-auto bg-black text-white"
+                  : isStreaming
+                  ? "bg-gray-200 italic"
+                  : "bg-gray-100"
+              }`}
+            >
+
+              {m.role === "assistant" ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {m.content}
+                </ReactMarkdown>
+              ) : (
+                m.content
+              )}
+
+            </div>
+          );
+
+        })}
+
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-slate-200 p-4">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Ask the agent..."
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-          >
-            {loading ? "..." : "Send"}
-          </button>
-        </div>
+      <form onSubmit={handleSubmit} className="p-4 border-t flex gap-2">
+
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="flex-1 border px-2 py-1"
+        />
+
+        <button className="bg-black text-white px-3">
+          Send
+        </button>
+
       </form>
+
     </aside>
   );
 }
