@@ -3,10 +3,24 @@
 import { useState } from "react";
 import { API_KEY } from "@/lib/config";
 
+type ParsedReport = {
+  machine_id?: string;
+  machine_type?: string;
+  last_service?: string;
+  temperature?: string;
+  vibration?: string;
+  noise?: string;
+  coolant?: string;
+  lubrication?: string;
+  issues?: string[];
+  warning?: string;
+};
+
 type AnalyzeResponse = {
-  parsed: string;
+  parsed: ParsedReport;
   context: string[];
   recommendation: string;
+  session_id?: string;
 };
 
 type FileUploadProps = {
