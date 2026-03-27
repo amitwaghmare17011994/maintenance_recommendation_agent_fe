@@ -16,7 +16,6 @@ type AnalyzeResult = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
-  streaming?: boolean;
 };
 
 const API_BASE = "/backend";
@@ -44,88 +43,26 @@ export default function HomePage() {
 
     try {
 
-      const response = await fetch(
-        `${API_BASE}/agent-stream?query=${encodeURIComponent(query)}`,
-        { method: "POST" }
-      );
-
-      if (!response.body) throw new Error("No stream");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      let streamIndex = -1;
-
-      //@ts-ignore
-      // add empty assistant message
-      setMessages((prev) => {
-        const arr = [
-          ...prev,
-          { role: "assistant", content: "", streaming: true }
-        ];
-        streamIndex = arr.length - 1;
-        return arr;
+      const response = await fetch(`${API_BASE}/agent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
       });
 
-      let finalText = "";
+      const data = await response.json();
 
-      while (true) {
-
-        const { done, value } = await reader.read();
-
-        if (done) break;
-
-        const chunk = decoder.decode(value).trim();
-
-        setMessages((prev) => {
-
-          const copy = [...prev];
-
-          if (streamIndex < 0) return prev;
-
-          // STATUS MESSAGE
-          if (
-            chunk.startsWith("🤖") ||
-            chunk.startsWith("📄") ||
-            chunk.startsWith("🔍") ||
-            chunk.startsWith("⚠️") ||
-            chunk.startsWith("🔧") ||
-            chunk.startsWith("⚙️") ||
-            chunk.startsWith("✔")
-          ) {
-
-            copy[streamIndex] = {
-              role: "assistant",
-              content: chunk,
-              streaming: true
-            };
-
-          }
-          else {
-
-            // FINAL RESULT
-            finalText += chunk + "\n";
-
-            copy[streamIndex] = {
-              role: "assistant",
-              content: finalText,
-              streaming: false
-            };
-
-          }
-
-          return copy;
-
-        });
-
-        await new Promise((r) => setTimeout(r, 400));
-      }
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.answer ?? "No response" }
+      ]);
 
     } catch (err) {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Streaming error" }
+        { role: "assistant", content: "Error contacting agent" }
       ]);
 
     } finally {
