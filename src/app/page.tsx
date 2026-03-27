@@ -11,6 +11,7 @@ type AnalyzeResult = {
   parsed: string;
   context: string[];
   recommendation: string;
+  session_id?: string;
 };
 
 type ChatMessage = {
@@ -27,12 +28,21 @@ export default function HomePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessionId, setSessionId] = useState("");
 
   const handleAnalyzeSuccess = (data: AnalyzeResult) => {
     setResult(data);
+    if (data.session_id) {
+      setSessionId(data.session_id);
+    }
   };
 
   const handleSendMessage = async (query: string) => {
+
+    if (!sessionId) {
+      alert("Please upload a report first");
+      return;
+    }
 
     setMessages((prev) => [
       ...prev,
@@ -48,7 +58,7 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query, session_id: sessionId })
       });
 
       const data = await response.json();
@@ -91,6 +101,8 @@ export default function HomePage() {
             if (loading) {
               setResult(null);
               setChatOpen(false);
+              setSessionId("");
+              setMessages([]);
             }
           }}
         />
