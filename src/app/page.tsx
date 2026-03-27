@@ -6,6 +6,7 @@ import ChatBox from "./components/ChatBox";
 import FileUpload from "./components/FileUpload";
 import FloatingChat from "./components/FloatingChat";
 import ResultView from "./components/ResultView";
+import { API_KEY } from "@/lib/config";
 
 type AnalyzeResult = {
   parsed: string;
@@ -56,10 +57,16 @@ export default function HomePage() {
       const response = await fetch(`${API_BASE}/agent`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY
         },
         body: JSON.stringify({ query, session_id: sessionId })
       });
+
+      if (response.status === 401) {
+        alert("Unauthorized. Invalid API key.");
+        return;
+      }
 
       const data = await response.json();
 

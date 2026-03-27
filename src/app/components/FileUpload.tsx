@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { API_KEY } from "@/lib/config";
 
 type AnalyzeResponse = {
   parsed: string;
@@ -36,9 +37,15 @@ export default function FileUpload({ onAnalyzeSuccess, onAnalyzeStateChange }: F
 
       const response = await fetch(`${API_BASE}/analyze`, {
         method: "POST",
+        headers: { "x-api-key": API_KEY },
         body: formData,
         cache: "no-store"
       });
+
+      if (response.status === 401) {
+        alert("Unauthorized. Invalid API key.");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`Upload failed with status ${response.status}.`);
