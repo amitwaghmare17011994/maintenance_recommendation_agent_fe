@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 
-import ChatBox from "./components/ChatBox";
+import ActionPanel from "./components/ActionPanel";
 import FileUpload from "./components/FileUpload";
-import FloatingChat from "./components/FloatingChat";
 import ResultView from "./components/ResultView";
-import { API_KEY } from "@/lib/config";
 
 type ParsedReport = {
   machine_id?: string;
@@ -28,79 +26,20 @@ type AnalyzeResult = {
   session_id?: string;
 };
 
-type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-const API_BASE = "/backend";
-
 export default function HomePage() {
 
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState("");
+  const [actionResult, setActionResult] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const handleAnalyzeSuccess = (data: AnalyzeResult) => {
     setResult(data);
+    setActionResult(null);
     if (data.session_id) {
       setSessionId(data.session_id);
     }
-  };
-
-  const handleSendMessage = async (query: string) => {
-
-    if (!sessionId) {
-      alert("Please upload a report first");
-      return;
-    }
-
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: query }
-    ]);
-
-    setChatLoading(true);
-
-    try {
-
-      const response = await fetch(`${API_BASE}/agent`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY
-        },
-        body: JSON.stringify({ query, session_id: sessionId })
-      });
-
-      if (response.status === 401) {
-        alert("Unauthorized. Invalid API key.");
-        return;
-      }
-
-      const data = await response.json();
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.answer ?? "No response" }
-      ]);
-
-    } catch (err) {
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Error contacting agent" }
-      ]);
-
-    } finally {
-
-      setChatLoading(false);
-
-    }
-
   };
 
   return (
@@ -108,10 +47,8 @@ export default function HomePage() {
 
       <div className="mx-auto max-w-4xl space-y-6">
 
-        <section className="space-y-2">
-          <h1 className="text-3xl font-bold">
-            Maintenance Agent UI
-          </h1>
+        <section className="space-y-1">
+          <h1 className="text-3xl font-bold">Maintenance Agent UI</h1>
         </section>
 
         <FileUpload
@@ -120,31 +57,42 @@ export default function HomePage() {
             setIsAnalyzing(loading);
             if (loading) {
               setResult(null);
-              setChatOpen(false);
               setSessionId("");
-              setMessages([]);
+              setActionResult(null);
             }
           }}
         />
 
         <ResultView result={result} isLoading={isAnalyzing} />
 
+        {result && sessionId && (
+          <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+
+            <h2 className="text-xl font-semibold text-slate-900">Agent Actions</h2>
+
+            <ActionPanel
+              sessionId={sessionId}
+              onResult={setActionResult}
+              setLoading={setActionLoading}
+            />
+
+            {actionLoading && (
+              <div className="animate-pulse rounded-lg bg-slate-100 px-4 py-6 text-center text-sm text-slate-500">
+                Running action…
+              </div>
+            )}
+
+            {!actionLoading && actionResult && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <h3 className="mb-2 text-sm font-semibold text-slate-700">Result</h3>
+                <p className="whitespace-pre-wrap text-sm text-slate-800">{actionResult}</p>
+              </div>
+            )}
+
+          </section>
+        )}
+
       </div>
-
-      <FloatingChat
-        visible={Boolean(result) && !chatOpen}
-        onOpen={() => setChatOpen(true)}
-      />
-
-      {result && (
-        <ChatBox
-          open={chatOpen}
-          messages={messages}
-          loading={chatLoading}
-          onSendMessage={handleSendMessage}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
 
     </main>
   );
