@@ -11,3 +11,18 @@ body {
 * {
   box-sizing: border-box;
 }
+
+.action-btn {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-weight: 600;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: #f1f5f9;
+  transform: translateY(-1px);
+}

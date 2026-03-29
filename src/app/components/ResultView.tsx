@@ -24,19 +24,28 @@ type ResultViewProps = {
   isLoading: boolean;
 };
 
-function getRiskLevel(issues: string[] = []) {
+type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+function getRisk(issues: string[] = []): { level: RiskLevel; percent: number } {
   const count = issues.length;
-  if (count >= 8) return "CRITICAL";
-  if (count >= 5) return "HIGH";
-  if (count >= 3) return "MEDIUM";
-  return "LOW";
+  if (count >= 8) return { level: "CRITICAL", percent: 95 };
+  if (count >= 5) return { level: "HIGH",     percent: 75 };
+  if (count >= 3) return { level: "MEDIUM",   percent: 50 };
+  return             { level: "LOW",      percent: 25 };
 }
 
-const riskStyles: Record<string, string> = {
-  CRITICAL: "bg-red-600 text-white",
-  HIGH: "bg-orange-500 text-white",
-  MEDIUM: "bg-yellow-400 text-black",
-  LOW: "bg-green-600 text-white",
+const riskBarColor: Record<RiskLevel, string> = {
+  LOW:      "bg-green-500",
+  MEDIUM:   "bg-yellow-400",
+  HIGH:     "bg-orange-500",
+  CRITICAL: "bg-red-600",
+};
+
+const riskBadgeColor: Record<RiskLevel, string> = {
+  LOW:      "bg-green-100 text-green-700",
+  MEDIUM:   "bg-yellow-100 text-yellow-700",
+  HIGH:     "bg-orange-100 text-orange-700",
+  CRITICAL: "bg-red-100 text-red-700",
 };
 
 export default function ResultView({ result, isLoading }: ResultViewProps) {
@@ -45,18 +54,15 @@ export default function ResultView({ result, isLoading }: ResultViewProps) {
 
   if (isLoading) {
     return (
-      <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Analysis Result</h2>
-        <div className="animate-pulse space-y-4">
-          <div className="h-12 w-full rounded-lg bg-slate-200" />
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="h-36 rounded-lg bg-slate-200" />
-            <div className="h-36 rounded-lg bg-slate-200" />
-          </div>
-          <div className="h-28 rounded-lg bg-slate-200" />
-          <div className="h-24 rounded-lg bg-slate-200" />
+      <div className="animate-pulse space-y-4">
+        <div className="h-12 w-full rounded-lg bg-slate-200" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="h-36 rounded-lg bg-slate-200" />
+          <div className="h-36 rounded-lg bg-slate-200" />
         </div>
-      </section>
+        <div className="h-28 rounded-lg bg-slate-200" />
+        <div className="h-24 rounded-lg bg-slate-200" />
+      </div>
     );
   }
 
@@ -64,16 +70,32 @@ export default function ResultView({ result, isLoading }: ResultViewProps) {
 
   const { parsed, recommendation } = result;
   const issues = parsed.issues ?? [];
-  const riskLevel = getRiskLevel(issues);
+  const { level: riskLevel, percent: riskPercent } = getRisk(issues);
 
   return (
-    <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="space-y-4">
 
-      <h2 className="text-xl font-semibold text-slate-900">Analysis Result</h2>
+      {/* Risk Indicator */}
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
 
-      {/* Risk Banner */}
-      <div className={`rounded-lg px-4 py-3 font-semibold ${riskStyles[riskLevel]}`}>
-        ⚠️ Risk Level: {riskLevel}
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-semibold text-slate-700">⚠️ Risk Level</h3>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${riskBadgeColor[riskLevel]}`}>
+            {riskLevel}
+          </span>
+        </div>
+
+        <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
+          <div
+            className={`h-full transition-all duration-700 ease-out ${riskBarColor[riskLevel]}`}
+            style={{ width: `${riskPercent}%` }}
+          />
+        </div>
+
+        <p className="mt-2 text-xs text-slate-500">
+          Based on detected issues: {issues.length}
+        </p>
+
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -165,6 +187,6 @@ export default function ResultView({ result, isLoading }: ResultViewProps) {
         <p className="whitespace-pre-wrap text-sm text-slate-800">{recommendation}</p>
       </div>
 
-    </section>
+    </div>
   );
 }

@@ -1,11 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { API_KEY } from "@/lib/config";
 
 type Props = {
   sessionId: string;
-  onResult: (data: string) => void;
-  setLoading: (loading: boolean) => void;
 };
 
 const API_BASE = "/backend";
@@ -17,10 +16,18 @@ const ACTIONS = [
   { key: "failure", label: "🔮 Predict Failure" },
 ] as const;
 
-export default function ActionPanel({ sessionId, onResult, setLoading }: Props) {
+type ActionKey = typeof ACTIONS[number]["key"];
 
-  const callAction = async (action: string) => {
+export default function ActionPanel({ sessionId }: Props) {
 
+  const [activeAction, setActiveAction] = useState<ActionKey | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const callAction = async (action: ActionKey) => {
+
+    setActiveAction(action);
+    setResult(null);
     setLoading(true);
 
     try {
@@ -35,15 +42,15 @@ export default function ActionPanel({ sessionId, onResult, setLoading }: Props) 
       });
 
       if (res.status === 401) {
-        onResult("Unauthorized. Invalid API key.");
+        setResult("Unauthorized. Invalid API key.");
         return;
       }
 
       const data = await res.json();
-      onResult(data.answer ?? "No response");
+      setResult(data.answer ?? "No response");
 
     } catch {
-      onResult("Error calling action");
+      setResult("Error calling action");
     } finally {
       setLoading(false);
     }
@@ -51,16 +58,45 @@ export default function ActionPanel({ sessionId, onResult, setLoading }: Props) 
   };
 
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {ACTIONS.map(({ key, label }) => (
-        <button
-          key={key}
-          onClick={() => callAction(key)}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-left text-sm font-medium text-slate-800 shadow-sm transition hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700 active:scale-95"
-        >
-          {label}
-        </button>
-      ))}
+    <div className="space-y-4">
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {ACTIONS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => callAction(key)}
+            disabled={loading}
+            className={`rounded-lg border px-4 py-3 text-left text-sm font-medium shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
+              activeAction === key
+                ? "border-blue-500 bg-blue-50 text-blue-700"
+                : "border-slate-300 bg-white text-slate-800 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeAction && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+
+          <h3 className="mb-2 font-semibold capitalize text-slate-700">
+            {ACTIONS.find((a) => a.key === activeAction)?.label} Result
+          </h3>
+
+          {loading ? (
+            <div className="space-y-2 animate-pulse">
+              <div className="h-3 w-3/4 rounded bg-slate-200" />
+              <div className="h-3 w-1/2 rounded bg-slate-200" />
+              <div className="h-3 w-2/3 rounded bg-slate-200" />
+            </div>
+          ) : (
+            <pre className="whitespace-pre-wrap text-sm text-slate-800">{result}</pre>
+          )}
+
+        </div>
+      )}
+
     </div>
   );
 }
